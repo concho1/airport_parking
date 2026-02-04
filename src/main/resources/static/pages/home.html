@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>주차장 실시간 조회 (더미)</title>
+
+    <!-- Bootstrap 5 (local) -->
+    <link rel="stylesheet" href="/assets/bootstrap-5.0.2-dist/css/bootstrap.min.css" />
+
+    <style>
+        body { background:#f6f7fb; }
+        .card-parking { border: 0; border-radius: 14px; }
+        .shadow-soft { box-shadow: 0 8px 22px rgba(15, 23, 42, .08); }
+        .badge-fit { padding: .45rem .65rem; border-radius: 999px; }
+        .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .small-muted { color:#6c757d; font-size: .9rem; }
+        .section-title { font-weight: 800; letter-spacing:-0.02em; }
+
+        .thumb {
+            height: 140px;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+            background: linear-gradient(135deg, #dfe6f5, #f3f6ff);
+            display:flex; align-items:center; justify-content:center;
+            color:#6c757d; font-weight:700;
+        }
+        .nav-pills .nav-link { border-radius: 999px; }
+    </style>
+</head>
+
+<body>
+<!-- Top bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="#">주차장 실시간 조회</a>
+        <div class="d-flex align-items-center">
+            <span class="badge bg-light text-primary me-2">더미 데이터</span>
+            <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#helpModal">
+                이용안내
+            </button>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4">
+    <!-- Notices -->
+    <div class="alert alert-warning shadow-soft" role="alert">
+        <div class="d-flex align-items-start">
+            <div class="me-3 fs-4">⚠️</div>
+            <div class="flex-grow-1">
+                <div class="fw-bold mb-1">안내</div>
+                <ul class="mb-0 ps-3">
+                    <li>현재 화면은 <span class="fw-bold">API 미연동</span> 상태이며, 더미 데이터로 표시됩니다.</li>
+                    <li>자동갱신 시 값이 약간씩 변동되도록 구성되어 있습니다.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card card-parking shadow-soft mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-lg-7">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="small-muted">마지막 업데이트:</span>
+                        <span id="lastUpdated" class="mono fw-bold">-</span>
+                        <span id="apiState" class="badge bg-success badge-fit">더미</span>
+
+                        <div class="ms-auto d-flex gap-2">
+                            <button id="btnRefresh" class="btn btn-primary btn-sm">새로고침</button>
+                            <button id="btnAuto" class="btn btn-primary btn-sm" aria-pressed="true">자동갱신: ON</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-5">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <div class="btn-group" role="group" aria-label="terminal">
+                            <input type="radio" class="btn-check" name="terminal" id="t1" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="t1">제1 터미널</label>
+
+                            <input type="radio" class="btn-check" name="terminal" id="t2" autocomplete="off">
+                            <label class="btn btn-outline-primary btn-sm" for="t2">제2 터미널</label>
+                        </div>
+
+                        <div class="btn-group" role="group" aria-label="parkingType">
+                            <input type="radio" class="btn-check" name="ptype" id="short" autocomplete="off">
+                            <label class="btn btn-outline-primary btn-sm" for="short">단기</label>
+
+                            <input type="radio" class="btn-check" name="ptype" id="long" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="long">장기</label>
+                        </div>
+
+                        <select id="refreshSec" class="form-select form-select-sm" style="width:auto;">
+                            <option value="5">5초</option>
+                            <option value="10" selected>10초</option>
+                            <option value="30">30초</option>
+                            <option value="60">60초</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="section-title mb-0">동편</h5>
+                        <span class="small-muted">표출 기준: 더미(변동)</span>
+                    </div>
+                    <div id="eastGrid" class="row g-3 mt-1"></div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="section-title mb-0">서편</h5>
+                        <span class="small-muted">표출 기준: 더미(변동)</span>
+                    </div>
+                    <div id="westGrid" class="row g-3 mt-1"></div>
+                </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <div class="small-muted">관련문의: <span class="fw-bold">주차상황실</span> <span class="mono">000-0000-0000</span></div>
+                <div class="small-muted">데이터 소스: <span class="fw-bold">더미 데이터</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw JSON -->
+    <div class="accordion shadow-soft" id="accRaw">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingRaw">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRaw" aria-expanded="false" aria-controls="collapseRaw">
+                    (디버그) 더미 데이터 보기
+                </button>
+            </h2>
+            <div id="collapseRaw" class="accordion-collapse collapse" aria-labelledby="headingRaw" data-bs-parent="#accRaw">
+                <div class="accordion-body">
+                    <pre id="rawJson" class="mb-0" style="white-space:pre-wrap;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-4 text-center small text-muted">
+        © 2026 Parking Realtime • Dummy UI (Bootstrap 5)
+    </footer>
+</main>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">이용안내</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="mb-0">
+                    <li>이 페이지는 <span class="fw-bold">API 없이</span> UI만 먼저 확인하기 위한 임시 화면입니다.</li>
+                    <li>자동갱신 시 더미 값이 조금씩 랜덤으로 변경됩니다(만차/혼잡도도 변동).</li>
+                    <li>나중에 API가 생기면, 더미 생성 부분을 fetch로 교체하면 됩니다.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS (local) -->
+<script src="/assets/bootstrap-5.0.2-dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const $ = (sel) => document.querySelector(sel);
+
+    const eastGrid = $("#eastGrid");
+    const westGrid = $("#westGrid");
+    const lastUpdated = $("#lastUpdated");
+    const rawJson = $("#rawJson");
+
+    const btnRefresh = $("#btnRefresh");
+    const btnAuto = $("#btnAuto");
+    const refreshSec = $("#refreshSec");
+
+    let autoOn = true;
+    let timer = null;
+
+    // ---------------------------
+    // 더미 데이터 생성 로직
+    // ---------------------------
+    const BASE = {
+        T1: {
+            long: {
+                east: [
+                    { id: "T1_L_E_P1", name: "장기주차장 P1", capacity: 1200, subtitle: "일반/장기" },
+                    { id: "T1_L_E_TOWER", name: "주차타워(동)", capacity: 500, subtitle: "주차타워" },
+                    { id: "T1_L_E_P3", name: "장기주차장 P3", capacity: 1600, subtitle: "일반/장기" }
+                ],
+                west: [
+                    { id: "T1_L_W_P2", name: "장기주차장 P2", capacity: 900, subtitle: "일반/장기" },
+                    { id: "T1_L_W_TOWER", name: "주차타워(서)", capacity: 500, subtitle: "주차타워" },
+                    { id: "T1_L_W_P4", name: "장기주차장 P4", capacity: 2000, subtitle: "일반/장기" }
+                ]
+            },
+            short: {
+                east: [
+                    { id: "T1_S_E_S1", name: "단기주차장 S1", capacity: 800, subtitle: "단기" },
+                    { id: "T1_S_E_S2", name: "단기주차장 S2", capacity: 700, subtitle: "단기" }
+                ],
+                west: [
+                    { id: "T1_S_W_S3", name: "단기주차장 S3", capacity: 750, subtitle: "단기" },
+                    { id: "T1_S_W_S4", name: "단기주차장 S4", capacity: 650, subtitle: "단기" }
+                ]
+            }
+        },
+        T2: {
+            long: {
+                east: [
+                    { id: "T2_L_E_P1", name: "장기주차장 A", capacity: 1800, subtitle: "일반/장기" },
+                    { id: "T2_L_E_P2", name: "장기주차장 B", capacity: 1500, subtitle: "일반/장기" }
+                ],
+                west: [
+                    { id: "T2_L_W_P3", name: "장기주차장 C", capacity: 1400, subtitle: "일반/장기" },
+                    { id: "T2_L_W_TOWER", name: "주차타워", capacity: 600, subtitle: "주차타워" }
+                ]
+            },
+            short: {
+                east: [
+                    { id: "T2_S_E_S1", name: "단기주차장 1", capacity: 900, subtitle: "단기" }
+                ],
+                west: [
+                    { id: "T2_S_W_S2", name: "단기주차장 2", capacity: 850, subtitle: "단기" }
+                ]
+            }
+        }
+    };
+
+    // id별로 "현재 가용면수"를 유지하면서 매 갱신 때 조금씩 흔들리게
+    const state = new Map();
+
+    function randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function clamp(n, lo, hi) {
+        return Math.max(lo, Math.min(hi, n));
+    }
+
+    function nowString() {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function getSelected() {
+        const terminal = document.querySelector('input[name="terminal"]:checked').id === "t2" ? "T2" : "T1";
+        const type = document.querySelector('input[name="ptype"]:checked').id === "short" ? "short" : "long";
+        return { terminal, type };
+    }
+
+    function seedIfNeeded(item) {
+        if (!state.has(item.id)) {
+            // 초깃값: 0~70% 정도 남아있도록 랜덤
+            const initialAvail = randInt(Math.floor(item.capacity * 0.05), Math.floor(item.capacity * 0.7));
+            state.set(item.id, initialAvail);
+        }
+        return state.get(item.id);
+    }
+
+    function jitterAvail(item) {
+        const cur = seedIfNeeded(item);
+
+        // 갱신 때마다 가용면을 ±로 약간 변동
+        // 용량에 비례해 변동폭을 다르게
+        const step = Math.max(3, Math.floor(item.capacity * 0.02));
+        const delta = randInt(-step, step);
+
+        // 가끔 만차 근처로 확 밀리게(혼잡 이벤트)
+        const spike = (Math.random() < 0.08) ? randInt(-Math.floor(item.capacity * 0.15), Math.floor(item.capacity * 0.05)) : 0;
+
+        const next = clamp(cur + delta + spike, 0, item.capacity);
+        state.set(item.id, next);
+
+        return next;
+    }
+
+    function computeStatus(available, capacity) {
+        if (available <= 0) return "FULL";
+        const used = capacity - available;
+        const pct = capacity > 0 ? (used / capacity) * 100 : 0;
+        if (pct >= 95) return "FULL";
+        if (pct >= 85) return "BUSY";
+        return "OK";
+    }
+
+    function buildDummy({ terminal, type }) {
+        const base = BASE[terminal][type];
+
+        function enrich(list) {
+            return list.map(it => {
+                const available = jitterAvail(it);
+                const status = computeStatus(available, it.capacity);
+                return { ...it, available, status };
+            });
+        }
+
+        return {
+            lastUpdated: nowString(),
+            terminal,
+            type,
+            east: enrich(base.east),
+            west: enrich(base.west)
+        };
+    }
+
+    // ---------------------------
+    // 렌더링
+    // ---------------------------
+    function badgeFor(item) {
+        const isFull = item.status === "FULL" || item.available === 0;
+        const label = isFull ? "만차" : `${item.available.toLocaleString()}대 가능`;
+
+        const cls = isFull ? "bg-danger"
+            : (item.status === "BUSY" ? "bg-warning text-dark" : "bg-success");
+
+        return `<span class="badge ${cls} badge-fit">${label}</span>`;
+    }
+
+    function occupancyBar(item) {
+        if (!item.capacity || item.capacity <= 0) return "";
+        const used = Math.max(0, item.capacity - (item.available ?? 0));
+        const pct = Math.min(100, Math.max(0, Math.round((used / item.capacity) * 100)));
+
+        const barCls = pct >= 95 ? "bg-danger" : (pct >= 85 ? "bg-warning" : "bg-success");
+
+        return `
+        <div class="mt-2">
+          <div class="d-flex justify-content-between small-muted">
+            <span>점유율</span>
+            <span class="mono">${pct}%</span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar ${barCls}" role="progressbar" style="width: ${pct}%;" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, (m) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+        }[m]));
+    }
+
+    function renderCards(targetEl, list) {
+        targetEl.innerHTML = "";
+
+        (list || []).forEach(item => {
+            const subtitle = item.subtitle
+                ? `<div class="small-muted">${escapeHtml(item.subtitle)}</div>`
+                : `<div class="small-muted">구역/시설</div>`;
+
+            const html = `
+          <div class="col-12 col-md-6">
+            <div class="card card-parking shadow-soft h-100">
+              <div class="thumb">
+                <span>${escapeHtml(item.id)}</span>
+              </div>
+              <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between gap-2">
+                  <div>
+                    <div class="fw-bold">${escapeHtml(item.name || "-")}</div>
+                    ${subtitle}
+                  </div>
+                  ${badgeFor(item)}
+                </div>
+
+                ${occupancyBar(item)}
+
+                <div class="mt-3 d-flex justify-content-between small-muted">
+                  <span>총면수</span>
+                  <span class="mono">${item.capacity ? item.capacity.toLocaleString() : "-"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+            targetEl.insertAdjacentHTML("beforeend", html);
+        });
+
+        if (!list || list.length === 0) {
+            targetEl.innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-light border mb-0">
+              표시할 데이터가 없습니다.
+            </div>
+          </div>
+        `;
+        }
+    }
+
+    // ---------------------------
+    // 갱신 루프
+    // ---------------------------
+    function loadOnce() {
+        const selected = getSelected();
+        const data = buildDummy(selected);
+
+        lastUpdated.textContent = data.lastUpdated;
+
+        renderCards(eastGrid, data.east);
+        renderCards(westGrid, data.west);
+
+        rawJson.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function startAuto() {
+        stopAuto();
+        const sec = parseInt(refreshSec.value, 10) || 10;
+        timer = setInterval(() => {
+            if (autoOn) loadOnce();
+        }, sec * 1000);
+    }
+
+    function stopAuto() {
+        if (timer) clearInterval(timer);
+        timer = null;
+    }
+
+    // Events
+    btnRefresh.addEventListener("click", () => loadOnce());
+
+    btnAuto.addEventListener("click", () => {
+        autoOn = !autoOn;
+        btnAuto.classList.toggle("btn-primary", autoOn);
+        btnAuto.classList.toggle("btn-outline-primary", !autoOn);
+        btnAuto.textContent = `자동갱신: ${autoOn ? "ON" : "OFF"}`;
+        btnAuto.setAttribute("aria-pressed", String(autoOn));
+    });
+
+    refreshSec.addEventListener("change", () => startAuto());
+
+    document.querySelectorAll('input[name="terminal"], input[name="ptype"]').forEach(el => {
+        el.addEventListener("change", () => loadOnce());
+    });
+
+    // Init
+    (function init() {
+        loadOnce();
+        startAuto();
+    })();
+</script>
+</body>
+</html>

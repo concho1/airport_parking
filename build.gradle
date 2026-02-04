@@ -25,23 +25,89 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // =========================
+    // Core Web / MVC
+    // =========================
+
+    // Spring MVC 기반 웹 애플리케이션 (Controller, @GetMapping 등)
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 
-    compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    // =========================
+    // Persistence / DB
+    // =========================
+
+    // JPA + Hibernate (Entity, Repository, 트랜잭션 관리)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // MariaDB JDBC 드라이버 (런타임에만 필요)
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+
+    // =========================
+    // Validation
+    // =========================
+
+    // @Valid, @NotNull, @Min 같은 Bean Validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // =========================
+    // Cache
+    // =========================
+
+    // Spring Cache 추상화 (@Cacheable, @CacheEvict 등)
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+
+    // =========================
+    // Monitoring / Ops
+    // =========================
+
+    // 헬스체크, 메트릭, 상태 확인 (/actuator/health 등)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // =========================
+    // Lombok
+    // =========================
+
+    // @Getter, @Setter, @Builder 등 (컴파일 타임 전용)
+    compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // =========================
+    // Dev
+    // =========================
+
+    // 개발 중 자동 재시작, LiveReload
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // =========================
+    // Swagger / OpenAPI
+    // =========================
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1'
+
+
+    // =========================
+    // Test
+    // =========================
+
+    // Actuator 테스트 지원
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+
+    // Cache 테스트 지원
     testImplementation 'org.springframework.boot:spring-boot-starter-cache-test'
+
+    // JPA 테스트 (@DataJpaTest 등)
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+
+    // Validation 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+
+    // MVC 컨트롤러 테스트 (MockMvc)
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // JUnit 플랫폼 런처
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
 
 tasks.named('test') {
     useJUnitPlatform()
